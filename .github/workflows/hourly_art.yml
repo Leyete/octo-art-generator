@@ -1,0 +1,29 @@
+name: Hourly Octo-Art Generator
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # Triggers at the start of every hour
+  workflow_dispatch:      # Allows you to click "Run manually" anytime
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Run Octo-App Engine
+        run: python octo_app.py
+
+      - name: Commit and push generated art
+        run: |
+          git config --global user.name "Octo-Art-Bot"
+          git config --global user.email "octobot@users.noreply.github.com"
+          git add index.html gallery/
+          git commit -m "🐙 Octo-Bot: Generated new hourly artwork" || exit 0
+          git push
