@@ -1,10 +1,9 @@
 import os
 import random
 import datetime
-import math
 import urllib.request
+import urllib.parse
 import xml.etree.ElementTree as ET
-from PIL import Image, ImageDraw, ImageFilter
 
 # ==========================================
 # 50 INFLUENTIAL ROMANTIC ARTISTS & WORKS
@@ -62,9 +61,6 @@ ROMANTIC_MASTERS = [
     {"name": "Emanuel Leutze", "country": "USA", "style": "Heroic historical dramatizations & courage", "works": ["Washington Crossing the Delaware", "Westward the Course of Empire Takes Its Way", "Columbus Before the Queen"]}
 ]
 
-# ==========================================
-# ARM 1: THE VISION ARM (1 of 50 arXiv + 8 Masters)
-# ==========================================
 def arm_vision():
     category = random.choice(["quant-ph", "astro-ph", "gr-qc", "cond-mat"])
     url = f"http://export.arxiv.org/api/query?search_query=cat:{category}&sortBy=submittedDate&sortOrder=descending&max_results=50"
@@ -101,7 +97,7 @@ def arm_vision():
         for work in artist["works"]:
             all_24_references.append(f"'{work}' by {artist['name']}")
             
-    title_prefixes = ["The Allegory of", "Sublime Vision of", "The Tempest of", "Contemplation of", "The Sanctuary of", "The Ruins of", "The Frontier of"]
+    title_prefixes = ["The Allegory of", "Sublime Vision of", "The Tempest of", "Contemplation of", "The Sanctuary of", "The Ruins of"]
     romantic_title = f"{random.choice(title_prefixes)} {paper_data['paper_title'].split(':')[0][:35]}"
     
     return {
@@ -111,125 +107,23 @@ def arm_vision():
         "romantic_title": romantic_title
     }
 
-# ==========================================
-# HELPER: PAINTERLY BRUSHSTROKE GENERATOR
-# ==========================================
-def draw_brushstroke(draw, p1, p2, color, width=15):
-    """Simulates organic brushstrokes using semi-transparent layered strokes."""
-    x1, y1 = p1
-    x2, y2 = p2
-    steps = max(int(math.hypot(x2 - x1, y2 - y1) / 3), 1)
-    
-    r, g, b, a = color
-    for i in range(steps):
-        t = i / steps
-        cx = int(x1 + (x2 - x1) * t + random.randint(-2, 2))
-        cy = int(y1 + (y2 - y1) * t + random.randint(-2, 2))
-        w = max(int(width + random.randint(-3, 3)), 2)
-        
-        # Micro color variations per stroke step
-        cr = max(0, min(255, r + random.randint(-10, 10)))
-        cg = max(0, min(255, g + random.randint(-10, 10)))
-        cb = max(0, min(255, b + random.randint(-10, 10)))
-        
-        draw.ellipse([cx - w, cy - w, cx + w, cy + w], fill=(cr, cg, cb, a))
-
-# ==========================================
-# ARM 2: RASTER FINE-ART ENGINE (PIL)
-# ==========================================
 def arm_artist(concept, output_filename):
-    w, h = 900, 900
-    img = Image.new("RGBA", (w, h), (10, 12, 18, 255))
-    draw = ImageDraw.Draw(img)
+    masters_str = ", ".join([m["name"] for m in concept["selected_masters"][:4]])
+    prompt_text = (
+        f"A masterpiece 19th-century Romanticism oil painting contemplating {concept['paper']['paper_title']}, "
+        f"painted in the style of {masters_str}. Dramatic chiaroscuro lighting, sublime atmospheric glazing, "
+        f"oil on canvas texture, museum quality fine art painting."
+    )
     
-    # Archetype Selection: Guarantees visual variance across cycles
-    archetype = random.choice(["SEASCAPE", "RUINS", "FOREST", "ALPINE", "VALLEY"])
+    encoded_prompt = urllib.parse.quote(prompt_text)
+    seed = random.randint(1, 999999)
+    image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=900&height=900&seed={seed}&nologo=true"
     
-    # Palette Synthesis
-    palettes = {
-        "Dusk": {"sky": (18, 24, 48), "glow": (220, 120, 30), "shadow": (12, 15, 25), "highlight": (255, 210, 120)},
-        "Storm": {"sky": (25, 30, 40), "glow": (180, 160, 140), "shadow": (8, 10, 15), "highlight": (240, 230, 200)},
-        "Nocturne": {"sky": (8, 14, 28), "glow": (70, 130, 180), "shadow": (4, 6, 12), "highlight": (200, 230, 255)}
-    }
-    pal = random.choice(list(palettes.values()))
-    
-    # 1. Sky & Glazing (Brushstroked Background)
-    for _ in range(400):
-        y1 = random.randint(0, int(h * 0.7))
-        y2 = y1 + random.randint(-20, 20)
-        x1, x2 = random.randint(0, w), random.randint(0, w)
-        factor = y1 / (h * 0.7)
-        
-        r = int(pal["sky"][0] + (pal["glow"][0] - pal["sky"][0]) * factor)
-        g = int(pal["sky"][1] + (pal["glow"][1] - pal["sky"][1]) * factor)
-        b = int(pal["sky"][2] + (pal["glow"][2] - pal["sky"][2]) * factor)
-        
-        draw_brushstroke(draw, (x1, y1), (x2, y2), (r, g, b, 120), width=random.randint(18, 35))
+    req = urllib.request.Request(image_url, headers={'User-Agent': 'Mozilla/5.0'})
+    with urllib.request.urlopen(req) as response:
+        with open(output_filename, "wb") as f:
+            f.write(response.read())
 
-    # 2. Celestial Light / Sun-Moon Disk
-    cx, cy = random.randint(350, 550), random.randint(250, 380)
-    glow_layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    glow_draw = ImageDraw.Draw(glow_layer)
-    for rad in range(200, 0, -8):
-        alpha = int(255 * (1 - rad / 200) * 0.3)
-        glow_draw.ellipse([cx - rad, cy - rad, cx + rad, cy + rad], fill=(pal["highlight"][0], pal["highlight"][1], pal["highlight"][2], alpha))
-    glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(15))
-    img = Image.alpha_composite(img, glow_layer)
-    draw = ImageDraw.Draw(img)
-
-    # 3. Subject Rendering based on Archetype
-    if archetype == "SEASCAPE":
-        # Turbulent Ocean Waves
-        for y_sea in range(int(h * 0.55), h, 8):
-            for _ in range(25):
-                x_stroke = random.randint(0, w)
-                length = random.randint(30, 90)
-                color = pal["glow"] if random.random() < 0.2 else pal["shadow"]
-                draw_brushstroke(draw, (x_stroke, y_sea), (x_stroke + length, y_sea + random.randint(-5, 5)), 
-                                 (color[0], color[1], color[2], 180), width=random.randint(6, 16))
-                
-    elif archetype == "RUINS":
-        # Gothic Archways & Spires
-        arch_x = random.randint(250, 500)
-        for y_arch in range(300, 800, 10):
-            draw_brushstroke(draw, (arch_x, y_arch), (arch_x + random.randint(100, 200), y_arch), 
-                             (pal["shadow"][0], pal["shadow"][1], pal["shadow"][2], 220), width=20)
-            draw_brushstroke(draw, (arch_x + 300, y_arch), (arch_x + random.randint(350, 420), y_arch), 
-                             (pal["shadow"][0], pal["shadow"][1], pal["shadow"][2], 220), width=20)
-
-    elif archetype == "FOREST":
-        # Vertical Tree Canopies & Dappled Light
-        for x_tree in range(50, w, 120):
-            trunk_w = random.randint(25, 50)
-            for y_t in range(200, h):
-                draw_brushstroke(draw, (x_tree, y_t), (x_tree + random.randint(-10, 10), y_t + 15), 
-                                 (pal["shadow"][0] + 10, pal["shadow"][1] + 10, pal["shadow"][2] + 10, 230), width=trunk_w)
-
-    elif archetype == "ALPINE":
-        # Crags & Diagonal Mountain Ridge
-        for step in range(0, 500, 12):
-            draw_brushstroke(draw, (step, 750 - int(step * 0.8)), (step + 80, 800 - int(step * 0.8)), 
-                             (pal["shadow"][0] + 15, pal["shadow"][1] + 15, pal["shadow"][2] + 25, 210), width=30)
-
-    else:  # VALLEY
-        # Soft Rolling Low Hills
-        for y_hill in range(int(h * 0.6), h, 15):
-            for x_h in range(0, w, 40):
-                draw_brushstroke(draw, (x_h, y_hill), (x_h + 60, y_hill + random.randint(-8, 8)), 
-                                 (pal["shadow"][0] + 8, pal["shadow"][1] + 12, pal["shadow"][2] + 8, 200), width=22)
-
-    # 4. Solitary Wanderer Figure (Friedrich Influence)
-    fig_x, fig_y = 450, int(h * 0.72)
-    draw.ellipse([fig_x - 5, fig_y - 20, fig_x + 5, fig_y - 10], fill=(0, 0, 0, 255)) # Head
-    draw.polygon([(fig_x - 10, fig_y - 10), (fig_x + 10, fig_y - 10), (fig_x + 14, fig_y + 30), (fig_x - 14, fig_y + 30)], fill=(0, 0, 0, 255)) # Cloak
-
-    # 5. Soft Atmospheric Glaze & Save
-    img = img.filter(ImageFilter.SMOOTH_MORE)
-    img.convert("RGB").save(output_filename, "PNG")
-
-# ==========================================
-# ARM 3: MUSEUM CURATOR ARM
-# ==========================================
 def arm_curator(concept, exec_time_str):
     paper = concept["paper"]
     masters = concept["selected_masters"]
@@ -240,9 +134,6 @@ def arm_curator(concept, exec_time_str):
     
     return f"<p class='plaque-p'>{p1}</p><p class='plaque-p'>{p2}</p>"
 
-# ==========================================
-# ARM 4: PUBLISHER (Virtual Museum Hall)
-# ==========================================
 def arm_publisher(concept, image_rel_path, museum_plaque, exec_time_str):
     os.makedirs("gallery", exist_ok=True)
     paper = concept["paper"]
@@ -250,7 +141,6 @@ def arm_publisher(concept, image_rel_path, museum_plaque, exec_time_str):
     
     artists_html = "".join([f"<li><strong>{m['name']}</strong> ({m['country']}) — <em>{m['style']}</em></li>" for m in masters])
     refs_html = "".join([f"<li>{ref}</li>" for ref in concept["all_24_references"]])
-    
     category_slug = paper['category'].lower()
     
     html_card = f"""
@@ -343,16 +233,13 @@ def arm_publisher(concept, image_rel_path, museum_plaque, exec_time_str):
         with open(index_path, "w", encoding="utf-8") as f:
             f.write(updated_html)
 
-# ==========================================
-# CENTRAL BRAIN ORCHESTRATOR
-# ==========================================
 if __name__ == "__main__":
     exec_now = datetime.datetime.utcnow()
     exec_time_str = exec_now.strftime("%B %d, %Y at %H:%M UTC")
     timestamp = exec_now.strftime("%Y%m%d_%H%M%S")
     
     os.makedirs("gallery", exist_ok=True)
-    img_filename = f"gallery/art_{timestamp}.png"
+    img_filename = f"gallery/art_{timestamp}.jpg"
     
     print(f"🐙 Central Brain: Waking up arms at {exec_time_str}...")
     concept = arm_vision()
@@ -360,11 +247,8 @@ if __name__ == "__main__":
     print(f"🎨 Selected 8 Masters: {', '.join([m['name'] for m in concept['selected_masters']])}")
     
     arm_artist(concept, img_filename)
-    print("🖌️ Painterly Engine: Rendered organic brushstrokes and archetype composition.")
+    print("🎨 AI Fine-Art Engine: Fetched Romantic oil painting.")
     
     museum_plaque = arm_curator(concept, exec_time_str)
-    print("🏛️ Museum Curator Arm: Composed 2-paragraph exhibition plaque.")
-    
     arm_publisher(concept, img_filename, museum_plaque, exec_time_str)
     print("📢 Publisher Arm: Updated Virtual Museum gallery.")
-    print("🐙 Central Brain: 15-minute cycle complete. Sleeping...")
