@@ -2,8 +2,8 @@ name: 15-Minute Octo-Art Generator
 
 on:
   schedule:
-    - cron: '*/15 * * * *'  # Runs automatically every 15 minutes (:00, :15, :30, :45)
-  workflow_dispatch:        # Allows manual execution anytime
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
