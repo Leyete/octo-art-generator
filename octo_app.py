@@ -63,7 +63,7 @@ ROMANTIC_MASTERS = [
 ]
 
 # ==========================================
-# ARM 1: THE VISION ARM (arXiv + 8 Masters)
+# ARM 1: THE VISION ARM (1 of 50 arXiv + 8 Masters)
 # ==========================================
 def arm_vision():
     category = random.choice(["quant-ph", "astro-ph", "gr-qc", "cond-mat"])
@@ -116,8 +116,8 @@ def arm_vision():
 # ==========================================
 def arm_artist(concept, output_filename):
     w, h = 900, 900
-    img = Image.new("RGB", (w, h), (10, 12, 18))
-    draw = ImageDraw.Draw(img, "RGBA")
+    img = Image.new("RGBA", (w, h), (10, 12, 18, 255))
+    draw = ImageDraw.Draw(img)
     
     # Romantic Palettes
     palettes = [
@@ -136,33 +136,33 @@ def arm_artist(concept, output_filename):
         
     # Celestial Luminance (Soft Radial Sun/Moon Glow)
     cx, cy = 450, 360
+    glow_layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    glow_draw = ImageDraw.Draw(glow_layer)
     for r in range(250, 0, -5):
-        alpha = int(255 * (1 - r / 250) * 0.3)
-        draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(pal["horizon"][0], pal["horizon"][1], pal["horizon"][2], alpha))
-        
+        alpha = int(255 * (1 - r / 250) * 0.25)
+        glow_draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(pal["horizon"][0], pal["horizon"][1], pal["horizon"][2], alpha))
+    glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(12))
+    img = Image.alpha_composite(img, glow_layer)
+    
     # Mountain Ranges (Layered Painterly Polygons with Gaussian Blur)
     mountain_layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     m_draw = ImageDraw.Draw(mountain_layer)
     m_draw.polygon([(0, 650), (250, 410), (500, 680)], fill=(pal["mountain"][0], pal["mountain"][1], pal["mountain"][2], 240))
     m_draw.polygon([(280, 680), (600, 350), (900, 690)], fill=(pal["dark"][0] + 15, pal["dark"][1] + 15, pal["dark"][2] + 20, 250))
-    mountain_layer = mountain_layer.filter(ImageFilter.GaussianBlur(3))
-    img.paste(mountain_layer, (0, 0), mountain_layer)
+    mountain_layer = mountain_layer.filter(ImageFilter.GaussianBlur(4))
+    img = Image.alpha_composite(img, mountain_layer)
 
     # Foreground Terrain & Solitary Wanderer
+    draw = ImageDraw.Draw(img)
     draw.polygon([(0, 640), (450, 590), (900, 640), (900, 900), (0, 900)], fill=(pal["dark"][0], pal["dark"][1], pal["dark"][2], 255))
     
     # Figure Silhouette
     draw.ellipse([444, 615, 454, 625], fill=(0, 0, 0, 255))
     draw.polygon([(440, 625), (458, 625), (462, 665), (436, 665)], fill=(0, 0, 0, 255))
     
-    # Apply Impasto Canvas Grain Texture
-    canvas_noise = Image.effect_noise((w, h), 15).convert("L")
-    canvas_noise = ImageFilter.find_edges(canvas_noise)
-    img = Image.blend(img, canvas_noise.convert("RGB"), 0.05)
-    
     # Smooth Soft Atmospheric Blur for Romantic Painting look
     img = img.filter(ImageFilter.SMOOTH_MORE)
-    img.save(output_filename, "PNG")
+    img.convert("RGB").save(output_filename, "PNG")
 
 # ==========================================
 # ARM 3: MUSEUM CURATOR ARM
