@@ -17,6 +17,10 @@ jobs:
         with:
           python-version: '3.x'
 
+      - name: Install Dependencies
+        run: |
+          pip install pillow
+
       - name: Run Octo-App Engine
         run: python octo_app.py
 
@@ -25,5 +29,5 @@ jobs:
           git config --global user.name "Octo-Art-Bot"
           git config --global user.email "octobot@users.noreply.github.com"
           git add index.html gallery/
-          git commit -m "🐙 Octo-Bot: Generated new artwork (15-min cycle)" || exit 0
+          git commit -m "🐙 Octo-Bot: Published fine-art Romantic exhibit" || exit 0
           git push
