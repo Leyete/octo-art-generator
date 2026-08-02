@@ -4,6 +4,7 @@ import datetime
 import math
 import urllib.request
 import xml.etree.ElementTree as ET
+from PIL import Image, ImageDraw, ImageFilter
 
 # ==========================================
 # 50 INFLUENTIAL ROMANTIC ARTISTS & WORKS
@@ -62,7 +63,7 @@ ROMANTIC_MASTERS = [
 ]
 
 # ==========================================
-# ARM 1: THE VISION ARM (1 of 50 arXiv + 8 Masters)
+# ARM 1: THE VISION ARM (arXiv + 8 Masters)
 # ==========================================
 def arm_vision():
     category = random.choice(["quant-ph", "astro-ph", "gr-qc", "cond-mat"])
@@ -100,7 +101,7 @@ def arm_vision():
         for work in artist["works"]:
             all_24_references.append(f"'{work}' by {artist['name']}")
             
-    title_prefixes = ["The Allegory of", "Sublime Vision of", "The Tempest of", "Contemplation of", "The Sanctuary of"]
+    title_prefixes = ["The Allegory of", "Sublime Vision of", "The Tempest of", "Contemplation of", "The Sanctuary of", "The Ruins of"]
     romantic_title = f"{random.choice(title_prefixes)} {paper_data['paper_title'].split(':')[0][:35]}"
     
     return {
@@ -111,55 +112,60 @@ def arm_vision():
     }
 
 # ==========================================
-# ARM 2: DIGITAL CANVAS PAINTER ENGINE
+# ARM 2: RASTER OIL PAINTING ENGINE (PIL)
 # ==========================================
-def arm_artist(concept):
-    width, height = 900, 900
-    svg_elements = []
+def arm_artist(concept, output_filename):
+    w, h = 900, 900
+    img = Image.new("RGB", (w, h), (10, 12, 18))
+    draw = ImageDraw.Draw(img, "RGBA")
     
-    bg_dark = random.choice(["#070a12", "#0f0b08", "#080e14", "#0c070e"])
-    mid_tone = random.choice(["#2c1a12", "#1e293b", "#3b1c10", "#182825"])
-    highlight = random.choice(["#f59e0b", "#fbbf24", "#d97706", "#fef08a"])
-    deep_accent = random.choice(["#7c2d12", "#9f1239", "#431407", "#1e1b4b"])
+    # Romantic Palettes
+    palettes = [
+        {"sky": (15, 23, 42), "horizon": (217, 119, 6), "mountain": (30, 41, 59), "dark": (3, 5, 8)},
+        {"sky": (24, 15, 30), "horizon": (251, 191, 36), "mountain": (59, 28, 16), "dark": (7, 4, 10)},
+        {"sky": (8, 24, 32), "horizon": (56, 189, 248), "mountain": (15, 45, 55), "dark": (2, 8, 12)}
+    ]
+    pal = random.choice(palettes)
     
-    svg_elements.append(f"""
-    <defs>
-        <radialGradient id="sunGlow" cx="50%" cy="40%" r="60%">
-            <stop offset="0%" stop-color="{highlight}" stop-opacity="0.9" />
-            <stop offset="35%" stop-color="{deep_accent}" stop-opacity="0.6" />
-            <stop offset="80%" stop-color="{mid_tone}" stop-opacity="0.8" />
-            <stop offset="100%" stop-color="{bg_dark}" stop-opacity="1" />
-        </radialGradient>
-        <filter id="canvasTexture">
-            <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="4" result="noise" />
-            <feColorMatrix type="saturate" values="0.1" />
-            <feComponentTransfer><feFuncA type="linear" slope="0.08" /></feComponentTransfer>
-            <feBlend mode="multiply" in="SourceGraphic" result="blend" />
-        </filter>
-        <filter id="softGlow"><feGaussianBlur stdDeviation="8" /></filter>
-    </defs>
-    <rect width="{width}" height="{height}" fill="{bg_dark}" />
-    <rect width="{width}" height="{height}" fill="url(#sunGlow)" filter="url(#canvasTexture)" />
-    """)
-    
-    svg_elements.append(f'<ellipse cx="450" cy="380" rx="320" ry="140" fill="{highlight}" opacity="0.25" filter="url(#softGlow)" />')
-    svg_elements.append(f'<polygon points="0,620 220,410 480,650" fill="{deep_accent}" opacity="0.95" />')
-    svg_elements.append(f'<polygon points="280,650 580,360 850,660" fill="{mid_tone}" opacity="0.9" />')
-    svg_elements.append(f'<polygon points="550,660 740,430 900,640" fill="#04070d" opacity="0.95" />')
-    svg_elements.append(f'<path d="M 0,640 Q 250,590 450,680 T 900,630 L 900,900 L 0,900 Z" fill="#020408" />')
-    svg_elements.append(f'<ellipse cx="450" cy="740" rx="280" ry="25" fill="{highlight}" opacity="0.35" filter="url(#softGlow)" />')
-    
-    svg_elements.append('<ellipse cx="448" cy="628" rx="7" ry="7" fill="#000000" />')
-    svg_elements.append('<path d="M 440,635 L 456,635 L 460,670 L 436,670 Z" fill="#000000" />')
-    svg_elements.append('<line x1="458" y1="635" x2="462" y2="690" stroke="#000000" stroke-width="2" />')
-    
-    svg_elements.append('<path d="M 40,650 Q 20,530 80,420 Q 120,520 100,650 Z" fill="#030509" />')
-    svg_elements.append('<path d="M 820,640 Q 800,510 860,400 Q 890,510 870,640 Z" fill="#030509" />')
+    # Sky Glazing (Gradient brush strokes)
+    for y in range(h):
+        r = int(pal["sky"][0] + (pal["horizon"][0] - pal["sky"][0]) * (y / h))
+        g = int(pal["sky"][1] + (pal["horizon"][1] - pal["sky"][1]) * (y / h))
+        b = int(pal["sky"][2] + (pal["horizon"][2] - pal["sky"][2]) * (y / h))
+        draw.line([(0, y), (w, y)], fill=(r, g, b, 255))
+        
+    # Celestial Luminance (Soft Radial Sun/Moon Glow)
+    cx, cy = 450, 360
+    for r in range(250, 0, -5):
+        alpha = int(255 * (1 - r / 250) * 0.3)
+        draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(pal["horizon"][0], pal["horizon"][1], pal["horizon"][2], alpha))
+        
+    # Mountain Ranges (Layered Painterly Polygons with Gaussian Blur)
+    mountain_layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    m_draw = ImageDraw.Draw(mountain_layer)
+    m_draw.polygon([(0, 650), (250, 410), (500, 680)], fill=(pal["mountain"][0], pal["mountain"][1], pal["mountain"][2], 240))
+    m_draw.polygon([(280, 680), (600, 350), (900, 690)], fill=(pal["dark"][0] + 15, pal["dark"][1] + 15, pal["dark"][2] + 20, 250))
+    mountain_layer = mountain_layer.filter(ImageFilter.GaussianBlur(3))
+    img.paste(mountain_layer, (0, 0), mountain_layer)
 
-    return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="100%" height="100%">{''.join(svg_elements)}</svg>"""
+    # Foreground Terrain & Solitary Wanderer
+    draw.polygon([(0, 640), (450, 590), (900, 640), (900, 900), (0, 900)], fill=(pal["dark"][0], pal["dark"][1], pal["dark"][2], 255))
+    
+    # Figure Silhouette
+    draw.ellipse([444, 615, 454, 625], fill=(0, 0, 0, 255))
+    draw.polygon([(440, 625), (458, 625), (462, 665), (436, 665)], fill=(0, 0, 0, 255))
+    
+    # Apply Impasto Canvas Grain Texture
+    canvas_noise = Image.effect_noise((w, h), 15).convert("L")
+    canvas_noise = ImageFilter.find_edges(canvas_noise)
+    img = Image.blend(img, canvas_noise.convert("RGB"), 0.05)
+    
+    # Smooth Soft Atmospheric Blur for Romantic Painting look
+    img = img.filter(ImageFilter.SMOOTH_MORE)
+    img.save(output_filename, "PNG")
 
 # ==========================================
-# ARM 3: MUSEUM CURATOR ARM (Writes Plaque)
+# ARM 3: MUSEUM CURATOR ARM
 # ==========================================
 def arm_curator(concept, exec_time_str):
     paper = concept["paper"]
@@ -174,28 +180,21 @@ def arm_curator(concept, exec_time_str):
 # ==========================================
 # ARM 4: PUBLISHER (Virtual Museum Hall)
 # ==========================================
-def arm_publisher(concept, svg_code, museum_plaque, exec_time_str):
+def arm_publisher(concept, image_rel_path, museum_plaque, exec_time_str):
     os.makedirs("gallery", exist_ok=True)
-    timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    filename = f"gallery/art_{timestamp}.svg"
-    
-    with open(filename, "w", encoding="utf-8") as f:
-        f.write(svg_code)
-        
     paper = concept["paper"]
     masters = concept["selected_masters"]
     
     artists_html = "".join([f"<li><strong>{m['name']}</strong> ({m['country']}) — <em>{m['style']}</em></li>" for m in masters])
     refs_html = "".join([f"<li>{ref}</li>" for ref in concept["all_24_references"]])
     
-    card_id = f"exhibit_{timestamp}"
     category_slug = paper['category'].lower()
     
     html_card = f"""
-        <div class="card" id="{card_id}" data-category="{category_slug}">
+        <div class="card" data-category="{category_slug}">
             <div class="frame-container">
                 <div class="picture-frame">
-                    {svg_code}
+                    <img src="{image_rel_path}" alt="{concept['romantic_title']}" style="width:100%; display:block;" />
                 </div>
             </div>
             <div class="meta">
@@ -239,30 +238,18 @@ def arm_publisher(concept, svg_code, museum_plaque, exec_time_str):
         header {{ text-align: center; margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid #1e293b; }}
         h1 {{ font-size: 3rem; margin-bottom: 0.5rem; color: #f59e0b; font-weight: normal; letter-spacing: 2px; text-transform: uppercase; }}
         p.subtitle {{ color: #94a3b8; font-style: italic; max-width: 750px; margin: 0 auto 1.5rem auto; line-height: 1.6; font-size: 1.05rem; }}
-        
-        .museum-nav {{ display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 1.5rem; font-family: sans-serif; }}
-        .filter-btn {{ background: #0f172a; border: 1px solid #334155; color: #cbd5e1; padding: 0.5rem 1.25rem; border-radius: 20px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; }}
-        .filter-btn:hover, .filter-btn.active {{ background: #d97706; color: #ffffff; border-color: #f59e0b; }}
-        
         .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 3rem; max-width: 1500px; margin: 0 auto; }}
-        .card {{ background: #0b0f19; border: 1px solid #1e293b; border-radius: 12px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.9); transition: transform 0.3s ease, border-color 0.3s ease; }}
-        .card:hover {{ transform: translateY(-8px); border-color: #f59e0b; }}
-        
+        .card {{ background: #0b0f19; border: 1px solid #1e293b; border-radius: 12px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.9); }}
         .frame-container {{ padding: 1.5rem; background: #030508; text-align: center; border-bottom: 1px solid #1e293b; }}
         .picture-frame {{ display: inline-block; width: 100%; aspect-ratio: 1; border: 12px solid #1c130d; box-shadow: inset 0 0 15px rgba(0,0,0,0.8), 0 10px 20px rgba(0,0,0,0.6); border-radius: 4px; overflow: hidden; }}
-        
         .meta {{ padding: 1.75rem; }}
         .card-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }}
         .badge {{ background: #7c2d12; color: #fef08a; font-size: 0.75rem; font-family: sans-serif; padding: 0.25rem 0.7rem; border-radius: 4px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; }}
-        .paper-btn {{ background: #0284c7; color: #ffffff; text-decoration: none; font-size: 0.8rem; font-family: sans-serif; padding: 0.35rem 0.8rem; border-radius: 4px; font-weight: bold; transition: background 0.2s; }}
-        .paper-btn:hover {{ background: #0369a1; }}
+        .paper-btn {{ background: #0284c7; color: #ffffff; text-decoration: none; font-size: 0.8rem; font-family: sans-serif; padding: 0.35rem 0.8rem; border-radius: 4px; font-weight: bold; }}
         .art-title {{ font-size: 1.6rem; color: #fef08a; font-weight: normal; line-height: 1.3; margin: 0.5rem 0 1.25rem 0; text-align: center; font-style: italic; }}
-        
         .museum-plaque {{ background: #111827; border-left: 4px solid #d97706; padding: 1.1rem 1.3rem; margin: 1.25rem 0; border-radius: 0 8px 8px 0; }}
         .plaque-header {{ font-family: sans-serif; font-size: 0.75rem; color: #f59e0b; letter-spacing: 1.5px; font-weight: bold; margin-bottom: 0.6rem; }}
         .plaque-p {{ font-size: 0.9rem; color: #cbd5e1; line-height: 1.65; margin: 0 0 0.8rem 0; }}
-        .plaque-p:last-child {{ margin-bottom: 0; }}
-        
         .divider {{ border: 0; border-top: 1px solid #1e293b; margin: 1.5rem 0; }}
         h3 {{ font-size: 0.95rem; color: #f59e0b; margin: 1rem 0 0.5rem 0; font-family: sans-serif; font-weight: 600; }}
         .masters-list, .refs-list {{ font-size: 0.83rem; color: #cbd5e1; font-family: sans-serif; padding-left: 1.2rem; margin: 0.4rem 0; line-height: 1.5; }}
@@ -274,37 +261,11 @@ def arm_publisher(concept, svg_code, museum_plaque, exec_time_str):
 <body>
     <header>
         <h1>🏛️ Virtual Museum of Romantic Science</h1>
-        <p.subtitle>An autonomous gallery exhibiting new digital paintings every 15 minutes that contemplate newly published arXiv research through the lens of 8 Romantic masters and 24 reference paintings.</p>
-        
-        <div class="museum-nav">
-            <button class="filter-btn active" onclick="filterGallery('all')">All Exhibition Halls</button>
-            <button class="filter-btn" onclick="filterGallery('quant-ph')">Quantum Physics</button>
-            <button class="filter-btn" onclick="filterGallery('astro-ph')">Astrophysics</button>
-            <button class="filter-btn" onclick="filterGallery('gr-qc')">Relativity & Cosmology</button>
-            <button class="filter-btn" onclick="filterGallery('cond-mat')">Condensed Matter</button>
-        </div>
+        <p.subtitle>An autonomous gallery exhibiting fine digital oil paintings every 15 minutes, contemplating newly published arXiv research through the lens of 8 Romantic masters.</p>
     </header>
-    
     <div class="grid" id="gallery">
 {html_card}
     </div>
-
-    <script>
-        function filterGallery(category) {{
-            const buttons = document.querySelectorAll('.filter-btn');
-            buttons.forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            const cards = document.querySelectorAll('.card');
-            cards.forEach(card => {{
-                if (category === 'all' || card.getAttribute('data-category') === category) {{
-                    card.style.display = 'block';
-                }} else {{
-                    card.style.display = 'none';
-                }}
-            }});
-        }}
-    </script>
 </body>
 </html>"""
         with open(index_path, "w", encoding="utf-8") as f:
@@ -325,18 +286,22 @@ def arm_publisher(concept, svg_code, museum_plaque, exec_time_str):
 if __name__ == "__main__":
     exec_now = datetime.datetime.utcnow()
     exec_time_str = exec_now.strftime("%B %d, %Y at %H:%M UTC")
+    timestamp = exec_now.strftime("%Y%m%d_%H%M%S")
+    
+    os.makedirs("gallery", exist_ok=True)
+    img_filename = f"gallery/art_{timestamp}.png"
     
     print(f"🐙 Central Brain: Waking up arms at {exec_time_str}...")
     concept = arm_vision()
     print(f"👁️ Vision Arm: arXiv paper retrieved -> '{concept['paper']['paper_title']}'")
     print(f"🎨 Selected 8 Masters: {', '.join([m['name'] for m in concept['selected_masters']])}")
     
-    svg_art = arm_artist(concept)
-    print("🖌️ Digital Canvas Painter: Rendered new Romantic masterpiece.")
+    arm_artist(concept, img_filename)
+    print("🖌️ Raster Painter Engine: Rendered fine digital oil painting with atmospheric glazing.")
     
     museum_plaque = arm_curator(concept, exec_time_str)
-    print("🏛️ Museum Curator Arm: Composed 2-paragraph exhibition plaque with timing.")
+    print("🏛️ Museum Curator Arm: Composed 2-paragraph exhibition plaque.")
     
-    arm_publisher(concept, svg_art, museum_plaque, exec_time_str)
+    arm_publisher(concept, img_filename, museum_plaque, exec_time_str)
     print("📢 Publisher Arm: Updated Virtual Museum gallery.")
     print("🐙 Central Brain: 15-minute cycle complete. Sleeping...")
